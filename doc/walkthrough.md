@@ -8,16 +8,16 @@ The following SQL statements train a TensorFlow model named `DNNClassifier`, whi
 
 ```sql
 
-SELECT * FROM a_table TRAIN DNNClassifier WITH learning_rate=0.01 INTO sqlflow_models.my_model;
+SELECT * FROM a_table TO TRAIN DNNClassifier WITH learning_rate=0.01 INTO sqlflow_models.my_model;
 ```
 
 And the following statement uses the trained model for prediction.
 
 ```sql
-SELECT * FROM b_table PREDICT b_table.predicted_label USING sqlflow_models.my_model;
+SELECT * FROM b_table TO PREDICT b_table.predicted_label USING sqlflow_models.my_model;
 ```
 
-Please be aware that the part in the above statements before the extended keyword TRAIN and PREDICT is a standard SQL statement. This feature simplifies the implementation of the SQLFlow system.
+Please be aware that the part in the above statements before the extended keyword TO TRAIN and TO PREDICT is a standard SQL statement. This feature simplifies the implementation of the SQLFlow system.
 
 ## System Implementation
 
@@ -25,23 +25,23 @@ If a SQL statement is of the standard syntax, SQLFlow throws it to the SQL engin
 
 ### SQLFlow as a gRPC Server
 
-SQLFlow is a gRPC server, which can connect with multiple clients.  A typical client is [pysqlflow](https://github.com/sql-machine-learning/pysqlflow), the SQLFlow plugin for Jupyter Notebook server.  Another once is a text-based client [/cmd/sqlflowserver/main.go](/cmd/sqlflowserver/main.go).
+SQLFlow is a gRPC server, which can connect with multiple clients.  A typical client is [pysqlflow](https://github.com/sql-machine-learning/pysqlflow), the SQLFlow plugin for Jupyter Notebook server.  Another once is a text-based client [/cmd/sqlflowserver/main.go](https://github.com/sql-machine-learning/sqlflow/tree/develop/cmd/sqlflowserver/main.go).
 
 ```
 Jupyter Notebook          ---(SQL statements)-->       SQLFlow gRPC server
 (SQLFlow magic command)   <--(a stream of messages)--
 ```
 
-The protobuf definition of the gRPC service is at [/server/proto/sqlflow.proto](/server/proto/sqlflow.proto).  The return of the method `SQLFlow.Run` is a stream of `Reponse`s, where each represents either a table header, a row, or a log message.  The header and rows are usually from a standard SQL statement, for example, SELECT or DESCRIBE, and the log messages are usually from the running of a generated Python program.
+The protobuf definition of the gRPC service is at [/pkg/proto/sqlflow.proto](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/proto/sqlflow.proto).  The return of the method `SQLFlow.Run` is a stream of `Response`s, where each represents either a table header, a row, or a log message.  The header and rows are usually from a standard SQL statement, for example, SELECT or DESCRIBE, and the log messages are usually from the running process of a generated Python program.
 
 ### SQLFlow in the gRPC Server
 
 Once the SQLFlow server receives a batch of SQL statements via a gRPC call, it runs the following steps for each statement:
 
-1. the [parser](/sql/sql.y) to generate parsing result,
-2. the [verifier](/sql/verifier.go) to verify the semantics given the parsing result,
-3. the [code generator](/sql/codegen.go) to generate a Python program, or the *submitter*, from the parsing result,
-4. the [executor](/sql/executor.go) that runs the submitter locally.
+1. the [parser](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/parser/extended_syntax_parser.y) to generate parsing result,
+2. the [verifier](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/verifier/verifier.go) to verify the semantics given the parsing result,
+3. the [code generator](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/codegen) to generate a Python program, or the *submitter*, from the parsing result,
+4. the [executor](https://github.com/sql-machine-learning/sqlflow/tree/develop/pkg/sql/executor_ir.go) that runs the submitter locally.
 
 Step 3. and 4. are only for a SQL statement of extended syntax; otherwise, SQLFlow server proxies the standard-syntax statement to the SQL engine.
 
@@ -54,7 +54,7 @@ In the minimal viable product (MVP) of SQLFlow, the code generator generates a P
 1. throw the standard SELECT part in the extended-syntax statement to MySQL via ODBC, and
 1. a loop that reads outputs from the run of the SELECT statement and trains the model (or, using a trained model to predict).
 
-The training part calls TensorFlow to update the parameters of the model specified in the TRAIN clause.
+The training part calls TensorFlow to update the parameters of the model specified in the TO TRAIN clause.
 
 ### Extensibility
 
